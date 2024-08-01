@@ -56,7 +56,9 @@ class Tokenizer:
         assert os.path.isfile(model_path), model_path
 
         mergeable_ranks = load_tiktoken_bpe(model_path)
+        #该函数会从 model_path 中读取 BPE 模型文件，并返回一个包含词汇和对应分词频率（或排名）的字典(tokenizer.model)，这里称为 mergeable_ranks
         num_base_tokens = len(mergeable_ranks)
+        
         special_tokens = [
             "<|begin_of_text|>",
             "<|end_of_text|>",

@@ -91,10 +91,10 @@ class Attention(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
         self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
-        model_parallel_size = fs_init.get_model_parallel_world_size()
+        model_parallel_size = fs_init.get_model_parallel_world_size() 
         self.n_local_heads = args.n_heads // model_parallel_size
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
-        self.n_rep = self.n_local_heads // self.n_local_kv_heads
+        self.n_rep = self.n_local_heads // self.n_local_kv_heads  #键/值头的数量小于查询头的数量时重复键/值头
         self.head_dim = args.dim // args.n_heads
 
         self.wq = ColumnParallelLinear(
@@ -159,7 +159,7 @@ class Attention(nn.Module):
 
         xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
 
-        self.cache_k = self.cache_k.to(xq)
+        self.cache_k = self.cache_k.to(xq)  #确保缓存在正确的设备上
         self.cache_v = self.cache_v.to(xq)
 
         self.cache_k[:bsz, start_pos : start_pos + seqlen] = xk
@@ -276,10 +276,12 @@ class Transformer(nn.Module):
 
     @torch.inference_mode()
     def forward(self, tokens: torch.Tensor, start_pos: int):
+        #start_pos :当前处理的序列的起始位置（用于 key-value 缓存）
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
         self.freqs_cis = self.freqs_cis.to(h.device)
         freqs_cis = self.freqs_cis[start_pos : start_pos + seqlen]
+        #获取当前序列范围内的旋转嵌入
 
         mask = None
         if seqlen > 1:

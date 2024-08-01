@@ -69,8 +69,8 @@ class Llama:
         assert os.path.isfile(tokenizer_path), f"Tokenizer file '{tokenizer_path}' does not exist."
         
         if not torch.distributed.is_initialized():
-            torch.distributed.init_process_group("nccl")
-        if not model_parallel_is_initialized():
+            torch.distributed.init_process_group("nccl")  #如果分布式进程组未初始化，则使用 nccl 后端初始化
+        if not model_parallel_is_initialized():      #初始化模型并行，如果model_parallel_size未指定，则从环境变量WORLD_SIZE获取。
             if model_parallel_size is None:
                 model_parallel_size = int(os.environ.get("WORLD_SIZE", 1))
             initialize_model_parallel(model_parallel_size)
@@ -82,10 +82,10 @@ class Llama:
         torch.manual_seed(seed)
 
         if local_rank > 0:
-            sys.stdout = open(os.devnull, "w")
+            sys.stdout = open(os.devnull, "w") #对于 local_rank 大于 0 的进程，将标准输出重定向到 /dev/null(屏蔽非主要进程的输出)
 
         start_time = time.time()
-        checkpoints = sorted(Path(ckpt_dir).glob("*.pth"))
+        checkpoints = sorted(Path(ckpt_dir).glob("*.pth")) #获取排序后的检查点文件路径列表，并确保其数量与模型并行大小一致
         assert len(checkpoints) > 0, f"no checkpoint files found in {ckpt_dir}"
         assert model_parallel_size == len(
             checkpoints
@@ -183,12 +183,13 @@ class Llama:
                 next_token = sample_top_p(probs, top_p)
             else:
                 next_token = torch.argmax(logits[:, -1], dim=-1)
-
+            #example of next_token: [3,3,2,6,7, ...] or [[5], [4], [9], ...]
             next_token = next_token.reshape(-1)
+
             # only replace token if prompt has already been generated
             next_token = torch.where(
                 input_text_mask[:, cur_pos], tokens[:, cur_pos], next_token
-            )
+            )     #pad换next_token，非pad换原来的
             tokens[:, cur_pos] = next_token
             if logprobs:
                 token_logprobs[:, prev_pos + 1 : cur_pos + 1] = -F.cross_entropy(
@@ -199,7 +200,7 @@ class Llama:
                 )
             eos_reached |= (~input_text_mask[:, cur_pos]) & (
                 torch.isin(next_token, stop_tokens)
-            )
+            )     #如果填充的位置生成了结束符，将eos或运算为True
             prev_pos = cur_pos
             if all(eos_reached):
                 break

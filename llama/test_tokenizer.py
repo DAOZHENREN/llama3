@@ -5,7 +5,7 @@ import os
 from unittest import TestCase
 from llama.tokenizer import ChatFormat, Tokenizer
 
-# TOKENIZER_PATH=<path> python -m unittest llama/test_tokenizer.py
+# TOKENIZER_PATH="/root/Meta-Llama-3-8B/original/tokenizer.model" python3 -m unittest llama/test_tokenizer.py
 
 class TokenizerTests(TestCase):
     def setUp(self):
