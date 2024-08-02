@@ -4,7 +4,8 @@
 from typing import List, Optional
 
 import fire
-
+import torch
+import torch.distributed
 from llama import Dialog, Llama
 
 
@@ -79,6 +80,7 @@ These are just a few of the many attractions that Paris has to offer. With so mu
         )
         print("\n==================================\n")
 
+    torch.distributed.destroy_process_group()
 
 if __name__ == "__main__":
     fire.Fire(main)

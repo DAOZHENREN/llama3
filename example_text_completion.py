@@ -4,7 +4,7 @@
 from typing import List
 
 import fire
-
+import torch
 from llama import Llama
 
 
@@ -58,6 +58,9 @@ def main(
         print(prompt)
         print(f"> {result['generation']}")
         print("\n==================================\n")
+    
+    # 在程序结束前销毁分布式进程组
+    torch.distributed.destroy_process_group()
 
 
 if __name__ == "__main__":
