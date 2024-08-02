@@ -19,6 +19,7 @@ from fairscale.nn.model_parallel.initialize import (
 from llama.model import ModelArgs, Transformer
 from llama.tokenizer import ChatFormat, Dialog, Message, Tokenizer
 
+from safetensors.torch import load_file
 
 class CompletionPrediction(TypedDict, total=False):
     generation: str
@@ -74,7 +75,7 @@ class Llama:
             if model_parallel_size is None:
                 model_parallel_size = int(os.environ.get("WORLD_SIZE", 1))
             initialize_model_parallel(model_parallel_size)
-
+        
         local_rank = int(os.environ.get("LOCAL_RANK", 0))
         torch.cuda.set_device(local_rank)
 
@@ -85,14 +86,23 @@ class Llama:
             sys.stdout = open(os.devnull, "w") #对于 local_rank 大于 0 的进程，将标准输出重定向到 /dev/null(屏蔽非主要进程的输出)
 
         start_time = time.time()
-        checkpoints = sorted(Path(ckpt_dir).glob("*.pth")) #获取排序后的检查点文件路径列表，并确保其数量与模型并行大小一致
+        checkpoints = sorted(Path(ckpt_dir).glob("*.safetensors")) #获取排序后的检查点文件路径列表，并确保其数量与模型并行大小一致
+        
         assert len(checkpoints) > 0, f"no checkpoint files found in {ckpt_dir}"
-        assert model_parallel_size == len(
-            checkpoints
-        ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {model_parallel_size}"
-        ckpt_path = checkpoints[get_model_parallel_rank()]
-        checkpoint = torch.load(ckpt_path, map_location="cpu")
-        with open(Path(ckpt_dir) / "params.json", "r") as f:
+
+        #这段代码处理模型并行化
+        # assert model_parallel_size == len(
+        #     checkpoints
+        # ), f"Loading a checkpoint for MP={len(checkpoints)} but world size is {model_parallel_size}"
+        # checkpoint = torch.load(ckpt_path, map_location="cpu")
+
+        state_dict = {}
+        for checkpoint in checkpoints:
+            part_state_dict = load_file(checkpoint)
+
+            state_dict.update(part_state_dict)
+        
+        with open(Path(ckpt_dir) / "original/params.json", "r") as f:
             params = json.loads(f.read())
 
         model_args: ModelArgs = ModelArgs(
@@ -107,7 +117,7 @@ class Llama:
         else:
             torch.set_default_tensor_type(torch.cuda.HalfTensor)
         model = Transformer(model_args)
-        model.load_state_dict(checkpoint, strict=False)
+        model.load_state_dict(state_dict, strict=False)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
         return Llama(model, tokenizer)
