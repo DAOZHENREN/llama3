@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLama Chat Generator</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .form-control:focus {
+            box-shadow: none;
+            border-color: #007bff;
+        }
+        .response-container {
+            margin-top: 20px;
+        }
+        .response-container pre {
+            background-color: #f1f1f1;
+            padding: 1rem;
+            border-radius: 8px;
+            white-space: pre-wrap; /* Ensures that the text wraps and respects new lines */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header text-center">
+                <h2>LLama Chat Generator</h2>
+            </div>
+            <div class="card-body">
+                <form id="chat-form">
+                    <div class="form-group">
+                        <label for="user_input">User Input:</label>
+                        <textarea class="form-control" id="user_input" rows="4" placeholder="Enter your input here..." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="system_prompt">System Prompt (Optional):</label>
+                        <textarea class="form-control" id="system_prompt" rows="2" placeholder="Enter system prompt here..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Generate Response</button>
+                </form>
+                <div class="response-container" id="response-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#chat-form').on('submit', function(event) {
+                event.preventDefault();
+                const userInput = $('#user_input').val();
+                const systemPrompt = $('#system_prompt').val();
+                $.ajax({
+                    url: '/generate',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ user_input: userInput, system_prompt: systemPrompt }),
+                    success: function(response) {
+                        let responseHtml = '';
+                        if (response.error) {
+                            responseHtml = `<div class="alert alert-danger">${response.error}</div>`;
+                        } else {
+                            responseHtml = response.response.map(res => `<pre>${res}</pre>`).join('');
+                        }
+                        $('#response-container').html(responseHtml);
+                    },
+                    error: function() {
+                        $('#response-container').html('<div class="alert alert-danger">An error occurred while processing your request.</div>');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
