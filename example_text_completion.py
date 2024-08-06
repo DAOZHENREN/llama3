@@ -33,7 +33,6 @@ def main(
 
     prompts: List[str] = [
         # For these prompts, the expected answer is the natural continuation of the prompt
-        "I believe the meaning of life is",
         "Simply put, the theory of relativity states that ",
         """A brief message congratulating the team on the launch:
 
@@ -59,8 +58,8 @@ def main(
         print(f"> {result['generation']}")
         print("\n==================================\n")
     
-    # 在程序结束前销毁分布式进程组
-    torch.distributed.destroy_process_group()
+   
+    
 
 
 if __name__ == "__main__":
